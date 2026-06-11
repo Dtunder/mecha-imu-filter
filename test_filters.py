@@ -5,37 +5,42 @@ from filters import KalmanFilter, ComplementaryFilter, LowPassFilter
 class TestFilters(unittest.TestCase):
 
     def test_validation(self):
+        import logging
         # Test number validation (type, nan, inf)
-        with self.assertRaises(TypeError):
-            KalmanFilter(initial_value="0.0")
-        with self.assertRaises(ValueError):
-            KalmanFilter(initial_value=math.nan)
-        with self.assertRaises(ValueError):
-            KalmanFilter(initial_value=math.inf)
+        with self.assertLogs('filters', level='ERROR') as cm:
+            with self.assertRaises(TypeError):
+                KalmanFilter(initial_value="0.0")
+            self.assertTrue(any("Validation failed" in log for log in cm.output))
             
-        # Test specific ranges
-        with self.assertRaises(ValueError):
-            KalmanFilter(process_noise=-1.0)
-        with self.assertRaises(ValueError):
-            KalmanFilter(measurement_noise=0.0)
-        with self.assertRaises(ValueError):
-            KalmanFilter(measurement_noise=-1.0)
-        with self.assertRaises(ValueError):
-            KalmanFilter(estimated_error=-1.0)
+            with self.assertRaises(ValueError):
+                KalmanFilter(initial_value=math.nan)
             
-        with self.assertRaises(ValueError):
-            ComplementaryFilter(alpha=-0.1)
-        with self.assertRaises(ValueError):
-            ComplementaryFilter(alpha=1.1)
-            
-        cf = ComplementaryFilter()
-        with self.assertRaises(ValueError):
-            cf.update(10.0, 0.0, -1.0)
-            
-        with self.assertRaises(ValueError):
-            LowPassFilter(alpha=-0.1)
-        with self.assertRaises(ValueError):
-            LowPassFilter(alpha=1.1)
+            with self.assertRaises(ValueError):
+                KalmanFilter(initial_value=math.inf)
+                
+            # Test specific ranges
+            with self.assertRaises(ValueError):
+                KalmanFilter(process_noise=-1.0)
+            with self.assertRaises(ValueError):
+                KalmanFilter(measurement_noise=0.0)
+            with self.assertRaises(ValueError):
+                KalmanFilter(measurement_noise=-1.0)
+            with self.assertRaises(ValueError):
+                KalmanFilter(estimated_error=-1.0)
+                
+            with self.assertRaises(ValueError):
+                ComplementaryFilter(alpha=-0.1)
+            with self.assertRaises(ValueError):
+                ComplementaryFilter(alpha=1.1)
+                
+            cf = ComplementaryFilter()
+            with self.assertRaises(ValueError):
+                cf.update(10.0, 0.0, -1.0)
+                
+            with self.assertRaises(ValueError):
+                LowPassFilter(alpha=-0.1)
+            with self.assertRaises(ValueError):
+                LowPassFilter(alpha=1.1)
 
     def test_kalman_zero_division(self):
         # We manually set parameters such that self.p + self.r = 0 (although r cannot be initialized to <= 0)
@@ -46,7 +51,9 @@ class TestFilters(unittest.TestCase):
         # self.p + self.q = -1.0 + 0 = -1.0
         # self.p + self.r = -1.0 + 1.0 = 0.0
         
-        kf.update(10.0) # Shouldn't raise ZeroDivisionError
+        with self.assertLogs('filters', level='WARNING') as cm:
+            kf.update(10.0) # Shouldn't raise ZeroDivisionError
+            self.assertTrue(any("ZeroDivisionError" in log for log in cm.output))
 
     def test_kalman_filter(self):
         kf = KalmanFilter(initial_value=0.0)
