@@ -65,6 +65,8 @@ class ComplementaryFilter:
         
         self._inv_alpha = 1.0 - self.alpha
 
+        self._inv_alpha = 1.0 - self.alpha
+
     def update(self, accel_angle, gyro_rate, dt):
         """
         Update the complementary filter.
@@ -97,6 +99,8 @@ class LowPassFilter:
         if not (0.0 <= self.alpha <= 1.0):
             raise ValueError("alpha must be between 0.0 and 1.0 inclusive.")
         
+        self._inv_alpha = 1.0 - self.alpha
+
         self._inv_alpha = 1.0 - self.alpha
 
     def update(self, val):
