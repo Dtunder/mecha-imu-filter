@@ -1,9 +1,12 @@
 import math
 
 def _validate_number(val, name="Value"):
+    """
+    Validates that a value is a finite number (int or float).
+    """
     if not isinstance(val, (int, float)):
         raise TypeError(f"{name} must be a number (int or float).")
-    if math.isnan(val) or math.isinf(val):
+    if not math.isfinite(val):
         raise ValueError(f"{name} cannot be NaN or infinity.")
     return float(val)
 
@@ -32,7 +35,7 @@ class KalmanFilter:
         val = _validate_number(val, "measurement value")
 
         # Prediction step
-        self.p = self.p + self.q
+        self.p += self.q
 
         # Update step
         try:
@@ -40,8 +43,8 @@ class KalmanFilter:
         except ZeroDivisionError:
             k = 0.0
 
-        self.x = self.x + k * (val - self.x)
-        self.p = (1 - k) * self.p
+        self.x += k * (val - self.x)
+        self.p *= (1.0 - k)
 
         return self.x
 
@@ -59,6 +62,8 @@ class ComplementaryFilter:
 
         if not (0.0 <= self.alpha <= 1.0):
             raise ValueError("alpha must be between 0.0 and 1.0 inclusive.")
+        
+        self._inv_alpha = 1.0 - self.alpha
 
     def update(self, accel_angle, gyro_rate, dt):
         """
@@ -74,7 +79,7 @@ class ComplementaryFilter:
         if dt < 0:
             raise ValueError("dt must be non-negative.")
 
-        self.angle = self.alpha * (self.angle + gyro_rate * dt) + (1.0 - self.alpha) * accel_angle
+        self.angle = self.alpha * (self.angle + gyro_rate * dt) + self._inv_alpha * accel_angle
         return self.angle
 
     def filter(self, accel_angle, gyro_rate, dt):
@@ -91,6 +96,8 @@ class LowPassFilter:
 
         if not (0.0 <= self.alpha <= 1.0):
             raise ValueError("alpha must be between 0.0 and 1.0 inclusive.")
+        
+        self._inv_alpha = 1.0 - self.alpha
 
     def update(self, val):
         """
@@ -98,7 +105,7 @@ class LowPassFilter:
         """
         val = _validate_number(val, "measurement value")
 
-        self.value = self.alpha * val + (1.0 - self.alpha) * self.value
+        self.value = self.alpha * val + self._inv_alpha * self.value
         return self.value
 
     def filter(self, val):
