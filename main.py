@@ -3,6 +3,13 @@ import logging
 def setup_logging(level=logging.INFO):
     """
     Configures structured logging for the application.
+    
+    Sets up basic logging configuration with the specified logging level and 
+    a standard format including timestamp, logger name, log level, and message.
+    
+    Args:
+        level (int, optional): The logging level to set (e.g., logging.INFO, logging.DEBUG). 
+                               Defaults to logging.INFO.
     """
     logging.basicConfig(
         level=level,
@@ -12,6 +19,11 @@ def setup_logging(level=logging.INFO):
     logger.debug("Logging configured.")
 
 def main():
+    """
+    Main entry point for the mecha-imu-filter application.
+    
+    Initializes logging and prints a welcome message.
+    """
     setup_logging()
     logger = logging.getLogger(__name__)
     logger.info("Starting mecha-imu-filter...")

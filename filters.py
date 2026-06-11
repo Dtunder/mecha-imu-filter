@@ -6,6 +6,17 @@ logger = logging.getLogger(__name__)
 def _validate_number(val, name="Value"):
     """
     Validates that a value is a finite number (int or float).
+    
+    Args:
+        val (int or float): The value to validate.
+        name (str, optional): The name of the variable being validated, used in error messages. Defaults to "Value".
+        
+    Returns:
+        float: The validated number cast to a float.
+        
+    Raises:
+        TypeError: If the value is not an int or float.
+        ValueError: If the value is NaN or infinity.
     """
     if not isinstance(val, (int, float)):
         logger.error("Validation failed: %s is not a number. Value: %s", name, val)
@@ -19,8 +30,28 @@ def _validate_number(val, name="Value"):
 class KalmanFilter:
     """
     A simple 1D Kalman Filter.
+    
+    This filter estimates the state of a dynamic system from a series of incomplete and noisy measurements.
+    
+    Attributes:
+        q (float): The process noise covariance.
+        r (float): The measurement noise covariance.
+        p (float): The estimation error covariance.
+        x (float): The estimated state value.
     """
     def __init__(self, process_noise=1e-5, measurement_noise=1e-2, estimated_error=1.0, initial_value=0.0):
+        """
+        Initializes the Kalman filter with process and measurement noise.
+        
+        Args:
+            process_noise (float, optional): The process noise variance (q). Must be >= 0. Defaults to 1e-5.
+            measurement_noise (float, optional): The measurement noise variance (r). Must be > 0. Defaults to 1e-2.
+            estimated_error (float, optional): The initial estimate error variance (p). Must be >= 0. Defaults to 1.0.
+            initial_value (float, optional): The initial state estimate (x). Defaults to 0.0.
+            
+        Raises:
+            ValueError: If process_noise < 0, measurement_noise <= 0, or estimated_error < 0.
+        """
         self.q = _validate_number(process_noise, "process_noise")
         self.r = _validate_number(measurement_noise, "measurement_noise")
         self.p = _validate_number(estimated_error, "estimated_error")
@@ -40,7 +71,13 @@ class KalmanFilter:
 
     def update(self, val):
         """
-        Update the Kalman filter with a new measurement.
+        Updates the Kalman filter state with a new measurement.
+        
+        Args:
+            val (float): The new measurement value.
+            
+        Returns:
+            float: The updated state estimate.
         """
         val = _validate_number(val, "measurement value")
 
@@ -62,14 +99,40 @@ class KalmanFilter:
         return self.x
 
     def filter(self, val):
+        """
+        Alias for update(). Filters a new measurement value.
+        
+        Args:
+            val (float): The new measurement value.
+            
+        Returns:
+            float: The updated state estimate.
+        """
         return self.update(val)
 
 
 class ComplementaryFilter:
     """
     A Complementary Filter, typically used for sensor fusion (e.g., combining accelerometer and gyroscope).
+    
+    This filter combines a high-pass filter (for gyroscope data) and a low-pass filter (for accelerometer data)
+    to estimate a more stable angle.
+    
+    Attributes:
+        alpha (float): The filter coefficient weighting the gyroscope integration.
+        angle (float): The estimated angle.
     """
     def __init__(self, alpha=0.98, initial_value=0.0):
+        """
+        Initializes the Complementary filter.
+        
+        Args:
+            alpha (float, optional): The filter coefficient (between 0.0 and 1.0 inclusive). Defaults to 0.98.
+            initial_value (float, optional): The initial angle estimate. Defaults to 0.0.
+            
+        Raises:
+            ValueError: If alpha is not between 0.0 and 1.0 inclusive.
+        """
         self.alpha = _validate_number(alpha, "alpha")
         self.angle = _validate_number(initial_value, "initial_value")
 
@@ -82,10 +145,18 @@ class ComplementaryFilter:
 
     def update(self, accel_angle, gyro_rate, dt):
         """
-        Update the complementary filter.
-        accel_angle: angle measured by accelerometer (or absolute measurement)
-        gyro_rate: rate of change of angle measured by gyroscope (or relative measurement rate)
-        dt: time delta
+        Updates the complementary filter state.
+        
+        Args:
+            accel_angle (float): Angle measured by the accelerometer (absolute measurement).
+            gyro_rate (float): Rate of change of angle measured by the gyroscope (relative measurement rate).
+            dt (float): Time delta since the last update.
+            
+        Returns:
+            float: The updated angle estimate.
+            
+        Raises:
+            ValueError: If dt is negative.
         """
         accel_angle = _validate_number(accel_angle, "accel_angle")
         gyro_rate = _validate_number(gyro_rate, "gyro_rate")
@@ -100,14 +171,41 @@ class ComplementaryFilter:
         return self.angle
 
     def filter(self, accel_angle, gyro_rate, dt):
+        """
+        Alias for update(). Filters the sensor data.
+        
+        Args:
+            accel_angle (float): Angle measured by the accelerometer.
+            gyro_rate (float): Rate of change of angle measured by the gyroscope.
+            dt (float): Time delta since the last update.
+            
+        Returns:
+            float: The updated angle estimate.
+        """
         return self.update(accel_angle, gyro_rate, dt)
 
 
 class LowPassFilter:
     """
     A simple exponential moving average Low-Pass Filter.
+    
+    This filter smooths data by applying a weighting factor to recent measurements versus previous estimates.
+    
+    Attributes:
+        alpha (float): The smoothing factor (weight) given to the new measurement.
+        value (float): The current filtered value.
     """
     def __init__(self, alpha=0.5, initial_value=0.0):
+        """
+        Initializes the Low-Pass filter.
+        
+        Args:
+            alpha (float, optional): The smoothing factor (between 0.0 and 1.0 inclusive). Defaults to 0.5.
+            initial_value (float, optional): The initial value estimate. Defaults to 0.0.
+            
+        Raises:
+            ValueError: If alpha is not between 0.0 and 1.0 inclusive.
+        """
         self.alpha = _validate_number(alpha, "alpha")
         self.value = _validate_number(initial_value, "initial_value")
 
@@ -120,7 +218,13 @@ class LowPassFilter:
 
     def update(self, val):
         """
-        Update the low pass filter with a new measurement.
+        Updates the low-pass filter with a new measurement.
+        
+        Args:
+            val (float): The new measurement value.
+            
+        Returns:
+            float: The updated filtered value.
         """
         val = _validate_number(val, "measurement value")
 
@@ -129,4 +233,13 @@ class LowPassFilter:
         return self.value
 
     def filter(self, val):
+        """
+        Alias for update(). Filters a new measurement value.
+        
+        Args:
+            val (float): The new measurement value.
+            
+        Returns:
+            float: The updated filtered value.
+        """
         return self.update(val)
