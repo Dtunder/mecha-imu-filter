@@ -30,9 +30,6 @@ def _validate_number(val: int | float, name: str = "Value") -> float:
     return float(val)
 
 
-from config import settings
-
-
 class KalmanFilter:
     """
     A simple 1D Kalman Filter.

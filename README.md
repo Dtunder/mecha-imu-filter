@@ -1,5 +1,7 @@
 # mecha-imu-filter
 
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
+
 Sensor filtering library (Kalman, Complementary, Lowpass) for IMU data.
 
 ## Overview

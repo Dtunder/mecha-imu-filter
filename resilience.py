@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Callable
+from typing import Callable
 
 from config import settings
 
@@ -29,9 +29,6 @@ class BadConfigurationError(SensorError):
     """Raised when the resilience wrapper is misconfigured."""
 
     pass
-
-
-from config import settings
 
 
 class ResilientSensorWrapper:
