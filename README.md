@@ -12,6 +12,44 @@ Clone the repository and run the scripts directly, or install locally if package
 
 ## Configuration Setup
 
+The library uses a `config.py` module to handle settings, pulling from a local `config.json` file if it exists, or environment variables. It has sensible defaults.
+
+Here is an example `config.json`:
+```json
+{
+  "filters": {
+    "kalman": {
+      "process_noise": 1e-5,
+      "measurement_noise": 1e-2,
+      "estimated_error": 1.0
+    },
+    "complementary": {
+      "alpha": 0.98
+    },
+    "lowpass": {
+      "alpha": 0.5
+    }
+  },
+  "resilience": {
+    "max_retries": 3,
+    "retry_delay": 0.1,
+    "fallback_value": 0.0
+  }
+}
+```
+
+You can also override configuration values at runtime using environment variables. The pattern is `MECHA_<MODULE>_<PROPERTY>`:
+
+```bash
+# Overrides max_retries for Resilience
+export MECHA_RESILIENCE_MAX_RETRIES=5
+
+# Overrides process noise for the Kalman filter
+export MECHA_KALMAN_PROCESS_NOISE=0.005
+```
+
+### Logging Configuration
+
 The library uses the standard Python `logging` module. You can configure logging directly in your application or use the provided `setup_logging` helper function in `main.py`.
 
 ```python
@@ -53,7 +91,8 @@ This library provides three standard filters inside `filters.py`:
 A 1D Kalman filter to smooth noisy signals, estimating the state of a dynamic system from a series of incomplete and noisy measurements.
 
 **Constructor:**
-`KalmanFilter(process_noise=1e-5, measurement_noise=1e-2, estimated_error=1.0, initial_value=0.0)`
+`KalmanFilter(process_noise=None, measurement_noise=None, estimated_error=None, initial_value=0.0)`
+If standard parameters are not given, the values fall back to the configurations handled in `config.py`.
 - `process_noise` (float): The process noise variance (q). Must be >= 0.
 - `measurement_noise` (float): The measurement noise variance (r). Must be > 0.
 - `estimated_error` (float): The initial estimate error variance (p). Must be >= 0.
@@ -79,7 +118,8 @@ filtered_val = kf.update(10.5)
 A sensor fusion filter typically used to combine accelerometer and gyroscope data. It combines a high-pass filter (for gyroscope data) and a low-pass filter (for accelerometer data) to estimate a more stable angle.
 
 **Constructor:**
-`ComplementaryFilter(alpha=0.98, initial_value=0.0)`
+`ComplementaryFilter(alpha=None, initial_value=0.0)`
+If standard parameters are not given, the values fall back to the configurations handled in `config.py`.
 - `alpha` (float): The filter coefficient weighting the gyroscope integration. Must be between 0.0 and 1.0 inclusive.
 - `initial_value` (float): The initial angle estimate.
 
@@ -111,7 +151,8 @@ filtered_angle = cf.update(accel_angle, gyro_rate, dt)
 A simple exponential moving average filter that smooths data by applying a weighting factor to recent measurements versus previous estimates.
 
 **Constructor:**
-`LowPassFilter(alpha=0.5, initial_value=0.0)`
+`LowPassFilter(alpha=None, initial_value=0.0)`
+If standard parameters are not given, the values fall back to the configurations handled in `config.py`.
 - `alpha` (float): The smoothing factor (weight) given to the new measurement. Must be between 0.0 and 1.0 inclusive.
 - `initial_value` (float): The initial value estimate.
 

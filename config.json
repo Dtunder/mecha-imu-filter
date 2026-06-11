@@ -1,0 +1,20 @@
+{
+  "filters": {
+    "kalman": {
+      "process_noise": 1e-5,
+      "measurement_noise": 1e-2,
+      "estimated_error": 1.0
+    },
+    "complementary": {
+      "alpha": 0.98
+    },
+    "lowpass": {
+      "alpha": 0.5
+    }
+  },
+  "resilience": {
+    "max_retries": 3,
+    "retry_delay": 0.1,
+    "fallback_value": 0.0
+  }
+}

@@ -1,6 +1,8 @@
 import logging
 import math
 
+from config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,6 +30,9 @@ def _validate_number(val: int | float, name: str = "Value") -> float:
     return float(val)
 
 
+from config import settings
+
+
 class KalmanFilter:
     """
     A simple 1D Kalman Filter.
@@ -43,11 +48,17 @@ class KalmanFilter:
 
     def __init__(
         self,
-        process_noise: float = 1e-5,
-        measurement_noise: float = 1e-2,
-        estimated_error: float = 1.0,
+        process_noise: float | None = None,
+        measurement_noise: float | None = None,
+        estimated_error: float | None = None,
         initial_value: float = 0.0,
     ) -> None:
+        if process_noise is None:
+            process_noise = settings["filters"]["kalman"]["process_noise"]
+        if measurement_noise is None:
+            measurement_noise = settings["filters"]["kalman"]["measurement_noise"]
+        if estimated_error is None:
+            estimated_error = settings["filters"]["kalman"]["estimated_error"]
         """
         Initializes the Kalman filter with process and measurement noise.
 
@@ -155,7 +166,9 @@ class ComplementaryFilter:
         angle (float): The estimated angle.
     """
 
-    def __init__(self, alpha: float = 0.98, initial_value: float = 0.0) -> None:
+    def __init__(self, alpha: float | None = None, initial_value: float = 0.0) -> None:
+        if alpha is None:
+            alpha = settings["filters"]["complementary"]["alpha"]
         """
         Initializes the Complementary filter.
 
@@ -244,7 +257,9 @@ class LowPassFilter:
         value (float): The current filtered value.
     """
 
-    def __init__(self, alpha: float = 0.5, initial_value: float = 0.0) -> None:
+    def __init__(self, alpha: float | None = None, initial_value: float = 0.0) -> None:
+        if alpha is None:
+            alpha = settings["filters"]["lowpass"]["alpha"]
         """
         Initializes the Low-Pass filter.
 

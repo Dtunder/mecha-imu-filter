@@ -2,8 +2,12 @@ import logging
 import unittest
 from unittest.mock import MagicMock, patch
 
-from resilience import (BadConfigurationError, ResilientSensorWrapper,
-                        SensorConnectionError, SensorTimeoutError)
+from resilience import (
+    BadConfigurationError,
+    ResilientSensorWrapper,
+    SensorConnectionError,
+    SensorTimeoutError,
+)
 
 
 class TestResilientSensorWrapper(unittest.TestCase):

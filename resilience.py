@@ -2,6 +2,8 @@ import logging
 import time
 from typing import Any, Callable
 
+from config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,6 +31,9 @@ class BadConfigurationError(SensorError):
     pass
 
 
+from config import settings
+
+
 class ResilientSensorWrapper:
     """
     A wrapper for sensor reading functions to provide resilience through retries and fallbacks.
@@ -37,10 +42,16 @@ class ResilientSensorWrapper:
     def __init__(
         self,
         read_func: Callable[[], float],
-        max_retries: int = 3,
-        retry_delay: float = 0.1,
-        fallback_value: float = 0.0,
+        max_retries: int | None = None,
+        retry_delay: float | None = None,
+        fallback_value: float | None = None,
     ) -> None:
+        if max_retries is None:
+            max_retries = settings["resilience"]["max_retries"]
+        if retry_delay is None:
+            retry_delay = settings["resilience"]["retry_delay"]
+        if fallback_value is None:
+            fallback_value = settings["resilience"]["fallback_value"]
         """
         Initializes the ResilientSensorWrapper.
 
