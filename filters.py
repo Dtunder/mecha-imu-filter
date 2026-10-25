@@ -112,11 +112,19 @@ class KalmanFilter:
         val = _validate_number(val, "measurement value")
 
         # Prediction step
-        self.p += self.q
+        predicted_p = self.p + self.q
+        if not math.isfinite(predicted_p):
+            raise ValueError("Kalman prediction covariance overflowed; state unchanged.")
+        self.p = predicted_p
 
         # Update step
         try:
-            k = self.p / (self.p + self.r)
+            # Compute the gain without overflowing p + r for large finite covariances.
+            if self.p >= self.r:
+                k = 1.0 / (1.0 + self.r / self.p)
+            else:
+                ratio = self.p / self.r
+                k = ratio / (1.0 + ratio)
         except ZeroDivisionError:
             logger.warning(
                 "ZeroDivisionError in Kalman filter update, p=%s, r=%s. Setting kalman gain to 0.",
@@ -125,7 +133,8 @@ class KalmanFilter:
             )
             k = 0.0
 
-        self.x += k * (val - self.x)
+        # A weighted average avoids overflow in (val - x) when both are finite.
+        self.x = (1.0 - k) * self.x + k * val
         self.p *= 1.0 - k
 
         logger.debug(
