@@ -1,10 +1,43 @@
 import math
 import unittest
 
-from filters import ComplementaryFilter, KalmanFilter, LowPassFilter
+from filters import (
+    AttitudeKalmanFilter,
+    ComplementaryFilter,
+    KalmanFilter,
+    LowPassFilter,
+)
 
 
 class TestFilters(unittest.TestCase):
+
+    def test_attitude_kalman_validation_and_innovation_gate(self) -> None:
+        with self.assertRaises(TypeError):
+            AttitudeKalmanFilter(q_angle="0.1")  # type: ignore[arg-type]
+        with self.assertRaises(ValueError):
+            AttitudeKalmanFilter(q_angle=-0.1)
+        with self.assertRaises(ValueError):
+            AttitudeKalmanFilter(q_bias=-0.1)
+        with self.assertRaises(ValueError):
+            AttitudeKalmanFilter(r_measure=0.0)
+        with self.assertRaises(ValueError):
+            AttitudeKalmanFilter(innovation_gate_sigma=0.0)
+
+        attitude = AttitudeKalmanFilter(innovation_gate_sigma=3.0)
+        for _ in range(5):
+            attitude.update(0.0, 0.0, 0.01)
+        estimate_before_outlier = attitude.angle
+        estimate_after_outlier = attitude.update(50.0, 0.0, 0.01)
+        self.assertFalse(attitude.last_measurement_accepted)
+        self.assertLess(abs(estimate_after_outlier - estimate_before_outlier), 0.1)
+
+        for inputs in (
+            (math.nan, 0.0, 0.01),
+            (0.0, math.inf, 0.01),
+            (0.0, 0.0, -0.01),
+        ):
+            with self.assertRaises(ValueError):
+                attitude.update(*inputs)
 
     def test_validation(self) -> None:
         # Test number validation (type, nan, inf)

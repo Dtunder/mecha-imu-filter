@@ -1,0 +1,7 @@
+estimator,n_seeds,rmse_mean_deg,rmse_std_deg
+Raw accelerometer,20,2.424372,0.024938
+Gyro integration,20,6.220008,0.037071
+Low-pass,20,0.854324,0.023902
+Complementary,20,0.355581,0.047171
+1-D Kalman (accel only),20,0.861165,0.025453
+Attitude Kalman,20,0.212496,0.042900

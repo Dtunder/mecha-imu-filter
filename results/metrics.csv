@@ -1,0 +1,7 @@
+estimator,rmse_deg,max_abs_error_deg,lag_seconds
+Raw accelerometer,2.409966,27.232748,0.010000
+Gyro integration,6.228707,12.019712,-0.010000
+Low-pass,0.864721,4.611790,0.050000
+Complementary,0.397451,0.975348,0.010000
+1-D Kalman (accel only),0.876687,4.120888,0.060000
+Attitude Kalman,0.269271,0.628160,0.010000
