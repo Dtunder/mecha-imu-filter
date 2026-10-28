@@ -160,6 +160,144 @@ class KalmanFilter:
         return self.update(val)
 
 
+class AttitudeKalmanFilter:
+    """Two-state angle and gyro-bias Kalman filter for a single tilt axis.
+
+    Angles are in degrees, gyro rates in degrees/second, and ``dt`` in seconds.
+    ``q_angle`` and ``q_bias`` are continuous-time process-noise intensities in
+    degree²/second and (degree/second)²/second, respectively. ``r_measure`` is
+    the accelerometer-angle measurement variance in degree².
+
+    Set ``innovation_gate_sigma`` to a positive value to reject accelerometer
+    updates whose innovation is farther than that many predicted standard
+    deviations from the estimate. The default ``None`` disables gating.
+    """
+
+    def __init__(
+        self,
+        q_angle: float = 0.00144,
+        q_bias: float = 0.0001,
+        r_measure: float = 4.84,
+        initial_angle: float = 0.0,
+        initial_bias: float = 0.0,
+        initial_angle_variance: float = 1.0,
+        initial_bias_variance: float = 1.0,
+        innovation_gate_sigma: float | None = None,
+    ) -> None:
+        self.q_angle = _validate_number(q_angle, "q_angle")
+        self.q_bias = _validate_number(q_bias, "q_bias")
+        self.r_measure = _validate_number(r_measure, "r_measure")
+        self.angle = _validate_number(initial_angle, "initial_angle")
+        self.bias = _validate_number(initial_bias, "initial_bias")
+        self._p00 = _validate_number(initial_angle_variance, "initial_angle_variance")
+        self._p11 = _validate_number(initial_bias_variance, "initial_bias_variance")
+        self._p01 = 0.0
+        self.innovation_gate_sigma = (
+            None
+            if innovation_gate_sigma is None
+            else _validate_number(innovation_gate_sigma, "innovation_gate_sigma")
+        )
+        if self.q_angle < 0.0:
+            raise ValueError("q_angle must be non-negative.")
+        if self.q_bias < 0.0:
+            raise ValueError("q_bias must be non-negative.")
+        if self.r_measure <= 0.0:
+            raise ValueError("r_measure must be strictly positive.")
+        if self._p00 < 0.0 or self._p11 < 0.0:
+            raise ValueError("initial covariance variances must be non-negative.")
+        if self.innovation_gate_sigma is not None and self.innovation_gate_sigma <= 0.0:
+            raise ValueError("innovation_gate_sigma must be strictly positive or None.")
+        self.last_measurement_accepted = True
+
+    def update(self, accel_angle: float, gyro_rate: float, dt: float) -> float:
+        """Predict from the gyro, then correct with an accelerometer angle."""
+        accel_angle = _validate_number(accel_angle, "accel_angle")
+        gyro_rate = _validate_number(gyro_rate, "gyro_rate")
+        dt = _validate_number(dt, "dt")
+        if dt < 0.0:
+            raise ValueError("dt must be non-negative.")
+
+        # State prediction: theta' = theta + (gyro_rate - bias) * dt.
+        angle_prior = self.angle + (gyro_rate - self.bias) * dt
+        p00_prior = (
+            self._p00
+            - dt * (self._p01 + self._p01)
+            + dt * dt * self._p11
+            + self.q_angle * dt
+        )
+        p01_prior = self._p01 - dt * self._p11
+        p11_prior = self._p11 + self.q_bias * dt
+        innovation = accel_angle - angle_prior
+        innovation_variance = p00_prior + self.r_measure
+        predicted_values = (
+            angle_prior,
+            p00_prior,
+            p01_prior,
+            p11_prior,
+            innovation,
+            innovation_variance,
+        )
+        if not all(math.isfinite(value) for value in predicted_values) or innovation_variance <= 0:
+            raise ValueError("Attitude Kalman prediction became non-finite; state unchanged.")
+
+        rejected = False
+        if self.innovation_gate_sigma is not None:
+            normalized_innovation = abs(innovation) / math.sqrt(innovation_variance)
+            rejected = normalized_innovation > self.innovation_gate_sigma
+
+        if rejected:
+            self.angle = angle_prior
+            self._p00 = p00_prior
+            self._p01 = p01_prior
+            self._p11 = p11_prior
+            self.last_measurement_accepted = False
+            return self.angle
+
+        k0 = p00_prior / innovation_variance
+        k1 = p01_prior / innovation_variance
+        angle_posterior = angle_prior + k0 * innovation
+        bias_posterior = self.bias + k1 * innovation
+
+        # Joseph-form covariance correction keeps the covariance symmetric and
+        # non-negative despite finite-precision roundoff.
+        one_minus_k0 = 1.0 - k0
+        p00_posterior = (
+            one_minus_k0 * one_minus_k0 * p00_prior
+            + k0 * k0 * self.r_measure
+        )
+        p01_posterior = (
+            one_minus_k0 * (p01_prior - k1 * p00_prior)
+            + k0 * k1 * self.r_measure
+        )
+        p11_posterior = (
+            p11_prior
+            - 2.0 * k1 * p01_prior
+            + k1 * k1 * p00_prior
+            + k1 * k1 * self.r_measure
+        )
+        posterior_values = (
+            angle_posterior,
+            bias_posterior,
+            p00_posterior,
+            p01_posterior,
+            p11_posterior,
+        )
+        if not all(math.isfinite(value) for value in posterior_values):
+            raise ValueError("Attitude Kalman update became non-finite; state unchanged.")
+
+        self.angle = angle_posterior
+        self.bias = bias_posterior
+        self._p00 = max(0.0, p00_posterior)
+        self._p01 = p01_posterior
+        self._p11 = max(0.0, p11_posterior)
+        self.last_measurement_accepted = True
+        return self.angle
+
+    def filter(self, accel_angle: float, gyro_rate: float, dt: float) -> float:
+        """Alias for :meth:`update`."""
+        return self.update(accel_angle, gyro_rate, dt)
+
+
 class ComplementaryFilter:
     """
     A Complementary Filter, typically used for sensor fusion (e.g., combining accelerometer and gyroscope).
